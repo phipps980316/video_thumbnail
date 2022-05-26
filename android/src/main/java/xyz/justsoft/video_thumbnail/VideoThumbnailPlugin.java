@@ -66,30 +66,27 @@ public class VideoThumbnailPlugin implements FlutterPlugin, MethodCallHandler {
         final int quality = (int) args.get("quality");
         final String method = call.method;
 
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                Object thumbnail = null;
-                boolean handled = false;
-                Exception exc = null;
+        switch (call.method) {
+            case "file":
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        Object thumbnail = null;
+                        boolean handled = false;
+                        Exception exc = null;
 
-                try {
-                    if (method.equals("file")) {
-                        final String path = (String) args.get("path");
-                        thumbnail = buildThumbnailFile(video, headers, path, format, maxh, maxw, timeMs, quality);
-                        handled = true;
-
-                    } else if (method.equals("data")) {
-                        thumbnail = buildThumbnailData(video, headers, format, maxh, maxw, timeMs, quality);
-                        handled = true;
+                        try {
+                            final String path = (String) args.get("path");
+                            thumbnail = buildThumbnailFile(video, headers, path, format, maxh, maxw, timeMs, quality);
+                            result.success(thumbnail);
+                        } catch (Exception e) {
+                            result.error("", exc.toString(), exc.getStackTrace());
+                        }
                     }
-                } catch (Exception e) {
-                    exc = e;
-                }
-
-                onResult(result, thumbnail, handled, exc);
-            }
-        });
+                });
+            default:
+                result.notImplemented();
+        }
     }
 
     private static Bitmap.CompressFormat intToFormat(int format) {
@@ -172,30 +169,6 @@ public class VideoThumbnailPlugin implements FlutterPlugin, MethodCallHandler {
             throw new RuntimeException(e);
         }
         return fullpath;
-    }
-
-    private void onResult(final Result result, final Object thumbnail, final boolean handled, final Exception e) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (!handled) {
-                    result.notImplemented();
-                    return;
-                }
-
-                if (e != null) {
-                    e.printStackTrace();
-                    result.error("exception", e.getMessage(), null);
-                    return;
-                }
-
-                result.success(thumbnail);
-            }
-        });
-    }
-
-    private static void runOnUiThread(Runnable runnable) {
-        new Handler(Looper.getMainLooper()).post(runnable);
     }
 
     /**
